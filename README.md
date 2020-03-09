@@ -10,4 +10,4 @@ note:
 3. NNkeras.py is the draft for using neural nets to do the classification. Please help to improve it;
 4. sklearn_different_MLmodels.py is a draft modified from an example given by sklearn, which comprises of several ML model. Please help to improve it;
 5.sklearn_regression.py is the sklearn logistic regression model. So far the best score is around 0.73. Please help to improve it.
-6. Please create a new branch for this commit and start a pull request for any modification.
+6. Please create a new branch for commit and start a pull request for any modification.
