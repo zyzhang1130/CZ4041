@@ -4,13 +4,16 @@ Created on Sat Mar  7 23:57:06 2020
 
 @author: Lenovo
 """
-
+import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
 
 
 from tensorflow.keras.datasets import mnist
-from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D
+from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D, UpSampling2D, Activation
 from tensorflow.keras.models import Model
+from tensorflow.keras import activations
 import tensorflow.keras as k
+from tensorflow.keras.callbacks import EarlyStopping
 
 import numpy as np
 import pandas as pd
@@ -21,7 +24,8 @@ from sklearn.pipeline import make_pipeline
 from collections import Counter
 from sklearn.linear_model import LogisticRegression
 import time
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
+from sklearn.model_selection import StratifiedKFold
 
 train=pd.read_csv('train.csv',delimiter=',') 
 
@@ -86,44 +90,69 @@ data=column_trans.fit_transform(train)
 n1 = data.shape[0]
 n2 = data.shape[1]
 m=int(0.8*n1)
-train=data[:m,:]
-test=data[m:-1,:]
+# train=data[:m,:]
+# test=data[m:-1,:]
+X = data[:,0:n2-1]
+Y = data[:,n2-1]
+Y = np.reshape(Y, (len(Y),1))
+
+# X_train=train[:,0:n2-1]
+# y_train=train[:,n2-1]
+# y_train = np.reshape(y_train, (len(y_train),1))
+# y_train = to_categorical(y_train)
 
 
-X_train=train[:,0:n2-1]
-y_train=train[:,n2-1]
-y_train = np.reshape(y_train, (len(y_train),1))
-y_train = to_categorical(y_train)
+# X_test=test[:,0:n2-1]
+# y_test=test[:,n2-1]
+# y_test = np.reshape(y_test, (len(y_test),1))
+# y_test = to_categorical(y_test)
+
+# define 10-fold cross validation test harness
+seed = 7
+kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=seed)
+cvscores = []
+
+sp=kfold.split(X, Y)
+test_accuracy=[]
+Y = to_categorical(Y)
+for train, test in sp:
+    
+    model = k.models.Sequential()
+    model.add(Dense(1024, input_shape=(n2-1,),activation='relu'))
+    model.add(Dense(512,activation='relu'))
+    model.add(Dense(256,activation='relu'))
+    model.add(Dense(128,activation='relu'))
+    model.add(Dense(64,activation='relu'))
+    model.add(Dense(32,activation='relu'))
+    model.add(Dense(16,activation='relu'))
+    model.add(Dense(8,activation='relu'))
+    model.add(Dense(4,activation='relu'))
+    model.add(Dense(2,activation='softmax'))
+    
+    
+    model.compile(optimizer='Adamax',
+                 loss='categorical_crossentropy', metrics=['accuracy'])
+    model.summary()
+    
+    # patient early stopping
+    es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
+    
+    history =model.fit(X[train], Y[train],validation_data=(X[test], Y[test]),
+                epochs=30,
+                shuffle=True,verbose=1,callbacks=[es])
+    
+    # evaluate the model
+    _, train_acc = model.evaluate(X[train], Y[train], verbose=1)
+    _, test_acc = model.evaluate(X[test], Y[test], verbose=1)
+    print('Train: %.3f, Test: %.3f' % (train_acc, test_acc))
+    
+    test_accuracy=max(history.history['val_acc'])
+    
+    # plt.figure()
+    # plt.plot(history.history['loss'], label='train')
+    # plt.plot(history.history['val_loss'], label='test')
+    # plt.legend()
+    # plt.show()
+    # score, acc = model.evaluate(X_test, y_test)
 
 
-X_test=test[:,0:n2-1]
-y_test=test[:,n2-1]
-y_test = np.reshape(y_test, (len(y_test),1))
-y_test = to_categorical(y_test)
-
-
-model = k.models.Sequential()
-model.add(Dense(1024, input_shape=(n2-1,)))
-model.add(Dense(512))
-model.add(Dense(256))
-model.add(Dense(128))
-model.add(Dense(64))
-model.add(Dense(32))
-model.add(Dense(16))
-model.add(Dense(8))
-model.add(Dense(4))
-model.add(Dense(2))
-
-
-model.compile(optimizer='Adamax',
-             loss='categorical_crossentropy', metrics=['accuracy'])
-model.summary()
-
-
-model.fit(X_train, y_train,
-            epochs=100,
-            shuffle=True)
-
-
-
-score, acc = model.evaluate(X_test, y_test)
